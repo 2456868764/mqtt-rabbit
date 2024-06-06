@@ -1,0 +1,204 @@
+package api
+
+import (
+	"strconv"
+	"time"
+
+	"bifromq_engine/pkg/db"
+	"bifromq_engine/pkg/model/entity"
+	"bifromq_engine/pkg/model/req"
+	"bifromq_engine/pkg/model/resp"
+	"github.com/gin-gonic/gin"
+)
+
+var Worker = &worker{}
+
+type worker struct {
+}
+
+func (worker) LoadConfigurations(c *gin.Context) {
+	var params req.ConfigurationReq
+	err := c.Bind(&params)
+	if err != nil {
+		Error(c, 20001, err.Error())
+		return
+	}
+	data := &resp.ConfigurationResp{
+		Data: make(map[string]string),
+	}
+	lastUpdateTime := time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
+	var configs []entity.DataSource
+	if params.Type == "global" {
+		db.DB.Model(entity.DataSource{}).Where("type = 'global' and status = 0 order by id ASC").Find(&configs)
+	} else {
+		db.DB.Model(entity.DataSource{}).Where("type != 'global' and  status = 0 order by id ASC").Find(&configs)
+	}
+	for _, config := range configs {
+		data.Data[config.Name] = config.Content
+		if config.UpdateTime.After(lastUpdateTime) {
+			lastUpdateTime = config.UpdateTime
+		}
+	}
+	data.LastUpdateTime = lastUpdateTime
+	Success(c, data)
+}
+
+func (worker) Register(c *gin.Context) {
+	var params req.WorkerRegisterReq
+	var err error
+	err = c.Bind(&params)
+	if err != nil {
+		Error(c, 20001, err.Error())
+		return
+	}
+	var newWorker = entity.Worker{
+		Name:            params.Name,
+		IP:              params.IP,
+		Tag:             params.Tag,
+		Port:            params.Port,
+		Status:          int32(entity.WorkerStatusRegister),
+		HeartbeatMisses: 0,
+		CreateTime:      time.Now(),
+		UpdateTime:      time.Now(),
+	}
+	orm := db.DB.Model(entity.Worker{})
+	exsitedWorker := entity.Worker{}
+
+	err = orm.Where("name =?", params.Name).Find(&exsitedWorker).Error
+	if err != nil {
+		Error(c, 500, err.Error())
+		return
+	}
+
+	if exsitedWorker.ID > 0 {
+		//existed
+		newWorker.ID = exsitedWorker.ID
+		err = orm.Where("id = ?", exsitedWorker.ID).Updates(newWorker).Error
+	} else {
+		err = orm.Create(&newWorker).Error
+	}
+	if err != nil {
+		Error(c, 500, err.Error())
+		return
+	}
+
+	data := &resp.WorkerRegisterResp{
+		WorkerID: newWorker.ID,
+	}
+	Success(c, data)
+}
+
+func (worker) UnRegister(c *gin.Context) {
+	var params req.WorkerUnRegisterReq
+	var err error
+	err = c.Bind(&params)
+	if err != nil {
+		Error(c, 20001, err.Error())
+		return
+	}
+	orm := db.DB.Model(entity.Worker{})
+	err = orm.Where("id = ?", params.WorkerID).Update("status", int32(entity.WorkerStatusUnRegister)).Error
+	if err != nil {
+		Error(c, 500, err.Error())
+		return
+	}
+	Success(c, "")
+}
+
+func (worker) Heartbeat(c *gin.Context) {
+	var params req.WorkerHeartbeatReq
+	var err error
+	err = c.Bind(&params)
+	if err != nil {
+		Error(c, 20001, err.Error())
+		return
+	}
+
+	existedWorker := entity.Worker{}
+	orm := db.DB.Model(entity.Worker{})
+	err = orm.Where("id = ?", params.WorkerID).Find(&existedWorker).Error
+	if err != nil {
+		Error(c, 500, err.Error())
+		return
+	}
+	if existedWorker.ID == 0 {
+		Error(c, 20001, "worker not found")
+		return
+	}
+
+	// Get last datasource time
+	lastDatasourceTime := time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
+	err = db.DB.Model(entity.DataSource{}).Where("type !='global' and status = 0").Select("max(updateTime)").Scan(&lastDatasourceTime).Error
+	if err != nil {
+		Error(c, 500, err.Error())
+		return
+	}
+
+	// Check worker status
+	if existedWorker.Status == int32(entity.WorkerStatusUnRegister) || existedWorker.Status == int32(entity.WorkerStatusHeartbeatMiss) || existedWorker.Status == int32(entity.WorkerStatusDeleted) {
+		data := &resp.WorkerHeartbeatResp{
+			LastDatasourceTime: lastDatasourceTime,
+			Kill:               true,
+		}
+		Success(c, data)
+		return
+	}
+
+	// Update worker heartbeat
+	upWorker := entity.Worker{
+		IP:                 params.IP,
+		Port:               params.Port,
+		HeartbeatMisses:    0,
+		HeartbeatTime:      time.Now(),
+		Status:             int32(entity.WorkerStatusOK),
+		LastDatasourceTime: params.LastDatasourceTime,
+	}
+	err = orm.Where("id = ?", params.WorkerID).Updates(upWorker).Error
+	if err != nil {
+		Error(c, 500, err.Error())
+		return
+	}
+
+	data := &resp.WorkerHeartbeatResp{
+		LastDatasourceTime: lastDatasourceTime,
+		Kill:               false,
+	}
+	Success(c, data)
+}
+
+func (worker) List(c *gin.Context) {
+	var data = resp.WorkerListResp{
+		PageData: make([]resp.WorkerListItem, 0),
+	}
+	var status = c.DefaultQuery("status", "")
+	var pageNoReq = c.DefaultQuery("pageNo", "1")
+	var pageSizeReq = c.DefaultQuery("pageSize", "10")
+	pageNo, _ := strconv.Atoi(pageNoReq)
+	pageSize, _ := strconv.Atoi(pageSizeReq)
+	var workerList []entity.Worker
+	orm := db.DB.Model(entity.Worker{})
+	if status != "" {
+		if statusInt, err := strconv.Atoi(status); err == nil {
+			orm = orm.Where("status=?", statusInt)
+		}
+	}
+	orm.Count(&data.Total)
+	orm.Offset((pageNo - 1) * pageSize).Limit(pageSize).Find(&workerList)
+	for _, datum := range workerList {
+		workerListItem := resp.WorkerListItem{}
+		workerListItem.ID = datum.ID
+		workerListItem.Name = datum.Name
+		workerListItem.IP = datum.IP
+		workerListItem.Port = datum.Port
+		workerListItem.LastDatasourceTime = datum.LastDatasourceTime
+		workerListItem.Status = datum.Status
+		workerListItem.StatusText = entity.WorkerStatus_name[datum.Status]
+		workerListItem.HeartbeatTime = datum.HeartbeatTime
+		workerListItem.HeartbeatMisses = datum.HeartbeatMisses
+		workerListItem.Tag = datum.Tag
+		workerListItem.CreateTime = datum.CreateTime
+		workerListItem.UpdateTime = datum.UpdateTime
+		data.PageData = append(data.PageData, workerListItem)
+	}
+	Success(c, data)
+}
