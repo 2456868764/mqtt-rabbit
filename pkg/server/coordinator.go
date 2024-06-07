@@ -1,17 +1,17 @@
 package server
 
 import (
-	"bifromq_engine/pkg/consumer"
-	"bifromq_engine/pkg/logs"
-	"bifromq_engine/pkg/model/req"
 	"encoding/json"
 	"fmt"
 	"math/rand"
 	"time"
 
+	"bifromq_engine/pkg/agent"
 	"bifromq_engine/pkg/api"
 	"bifromq_engine/pkg/db"
+	"bifromq_engine/pkg/logs"
 	"bifromq_engine/pkg/model/entity"
+	"bifromq_engine/pkg/model/req"
 	"bifromq_engine/pkg/routes"
 	"github.com/gin-gonic/gin"
 )
@@ -96,7 +96,7 @@ func (c *Coordinator) startWorkerCheck(stopChan <-chan struct{}) error {
 	for {
 		select {
 		case <-ticker.C:
-			//c.removeInactiveWorkers()
+			c.removeInactiveWorkers()
 		case <-stopChan:
 			return nil
 		}
@@ -172,7 +172,7 @@ func (c *Coordinator) scheduleTasks() {
 			worker := workerList[index]
 			url := fmt.Sprintf("http://%s:%d", worker.IP, worker.Port)
 			logs.Infof("[schedule] worker id=%d url=%s", worker.ID, url)
-			client := consumer.NewClient(url)
+			client := agent.NewClient(url)
 			bytes, _ = json.Marshal(importReq)
 			reqBody := string(bytes)
 			fmt.Sprintf("body = %s", reqBody)
@@ -214,7 +214,7 @@ func (c *Coordinator) checkTasks() {
 			continue
 		}
 		url := fmt.Sprintf("http://%s:%d", worker.IP, worker.Port)
-		client := consumer.NewClient(url)
+		client := agent.NewClient(url)
 		var rules []entity.Rule
 		//db.DB.Model(entity.Stream{}).Where("ruleSetID = ?", ruleSet.ID).Order("`id` Asc").Find(&streams)
 		db.DB.Model(entity.Rule{}).Where("ruleSetID = ?", ruleSet.ID).Order("`id` Asc").Find(&rules)
