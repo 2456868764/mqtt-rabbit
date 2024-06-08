@@ -14,13 +14,13 @@ type WorkerUnRegisterReq struct {
 }
 
 type WorkerHeartbeatReq struct {
-	WorkerID           int32     `form:"workerId" binding:"required"`
-	IP                 string    `form:"ip" binding:"required"`
-	Port               int32     `form:"port" binding:"required"`
-	LastDatasourceTime time.Time `form:"lastDataSourceTime"`
+	WorkerID        int32     `form:"workerId" binding:"required"`
+	IP              string    `form:"ip" binding:"required"`
+	Port            int32     `form:"port" binding:"required"`
+	LastSourcesTime time.Time `form:"lastSourcesTime"`
 }
 
 type ConfigurationReq struct {
 	WorkerID int32  `form:"workerId" binding:"required"`
-	Type     string `form:"type" binding:"required"`
+	ConfType string `form:"confType" binding:"required"`
 }

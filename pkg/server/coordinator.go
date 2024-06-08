@@ -59,8 +59,8 @@ func (c *Coordinator) Run(stopChan <-chan struct{}) error {
 	//
 	go c.gin.Run(fmt.Sprintf(":%d", c.coordinatorPort))
 	//go c.startWorkerCheck(stopChan)
-	//go c.startTaskSchedule(stopChan)
-	//go c.startTaskCheck(stopChan)
+	go c.startTaskSchedule(stopChan)
+	go c.startTaskCheck(stopChan)
 	return nil
 }
 
@@ -175,7 +175,6 @@ func (c *Coordinator) scheduleTasks() {
 			client := agent.NewClient(url)
 			bytes, _ = json.Marshal(importReq)
 			reqBody := string(bytes)
-			fmt.Sprintf("body = %s", reqBody)
 			if err := client.RulesetImport(reqBody); err == nil {
 				// update
 				updateRuleSet := entity.RuleSet{
@@ -230,14 +229,20 @@ func (c *Coordinator) checkTasks() {
 				}
 				db.DB.Model(entity.Rule{}).Where("id = ?", rule.ID).Updates(updateRule)
 			} else {
+				result := make(map[string]string)
+				json.Unmarshal([]byte(status), &result)
+				statusCheck := entity.TaskCheckStatus_STOPPED
+				if result["status"] == "running" {
+					statusCheck = entity.TaskCheckStatus_RUNNING
+					totalSuccess++
+				}
 				// update rule status
 				updateRule := entity.Rule{
-					StatusCheck:     int(entity.TaskCheckStatus_RUNNING),
+					StatusCheck:     int(statusCheck),
 					StatusCheckText: status,
 					StatusCheckTime: time.Now(),
 				}
 				db.DB.Model(entity.Rule{}).Where("id = ?", rule.ID).Updates(updateRule)
-				totalSuccess++
 			}
 		}
 		totalCheckStatus := entity.TaskCheckStatus_RUNNING

@@ -29,17 +29,17 @@ var (
 )
 
 type Worker struct {
-	ID                 int32     `json:"id"`
-	Name               string    `json:"name"`
-	Tag                string    `json:"tag"`
-	IP                 string    `json:"ip"`
-	Status             int32     `json:"status" `
-	Port               int32     `json:"port"`
-	HeartbeatMisses    int32     `json:"heartbeatMisses" gorm:"column:heartbeatMisses"`
-	HeartbeatTime      time.Time `json:"heartbeatTime" gorm:"column:heartbeatTime;default:NULL"`
-	LastDatasourceTime time.Time `json:"lastDatasourceTime" gorm:"column:lastDatasourceTime;default:NULL"`
-	CreateTime         time.Time `json:"createTime" gorm:"column:createTime"`
-	UpdateTime         time.Time `json:"updateTime" gorm:"column:updateTime"`
+	ID              int32     `json:"id"`
+	Name            string    `json:"name"`
+	Tag             string    `json:"tag"`
+	IP              string    `json:"ip"`
+	Status          int32     `json:"status" `
+	Port            int32     `json:"port"`
+	HeartbeatMisses int32     `json:"heartbeatMisses" gorm:"column:heartbeatMisses"`
+	HeartbeatTime   time.Time `json:"heartbeatTime" gorm:"column:heartbeatTime;default:NULL"`
+	LastSourcesTime time.Time `json:"lastSourcesTime" gorm:"column:lastSourcesTime;default:NULL"`
+	CreateTime      time.Time `json:"createTime" gorm:"column:createTime"`
+	UpdateTime      time.Time `json:"updateTime" gorm:"column:updateTime"`
 }
 
 func (Worker) TableName() string {

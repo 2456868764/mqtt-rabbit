@@ -18,8 +18,9 @@ type TaskCheckStatus int
 const (
 	TaskCheckStatus_INIT       TaskCheckStatus = 0
 	TaskCheckStatus_RUNNING    TaskCheckStatus = 1
-	TaskCheckStatus_FAILED     TaskCheckStatus = 2
-	TaskCheckStatus_PARTFAILED TaskCheckStatus = 3
+	TaskCheckStatus_STOPPED    TaskCheckStatus = 2
+	TaskCheckStatus_FAILED     TaskCheckStatus = 3
+	TaskCheckStatus_PARTFAILED TaskCheckStatus = 4
 )
 
 // Enum value maps for TaskStatus.

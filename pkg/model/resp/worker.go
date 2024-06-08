@@ -25,6 +25,7 @@ type ConfigurationResp struct {
 }
 
 type WorkerHeartbeatResp struct {
-	LastDatasourceTime time.Time `json:"lastDataSourceTime"`
-	Kill               bool      `json:"kill"`
+	LastSourcesTime time.Time `json:"lastSourcesTime"`
+	LastSinksTime   time.Time `json:"lastSinksTime"`
+	Kill            bool      `json:"kill"`
 }

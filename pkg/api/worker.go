@@ -28,11 +28,7 @@ func (worker) LoadConfigurations(c *gin.Context) {
 	}
 	lastUpdateTime := time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
 	var configs []entity.DataSource
-	if params.Type == "global" {
-		db.DB.Model(entity.DataSource{}).Where("type = 'global' and status = 0 order by id ASC").Find(&configs)
-	} else {
-		db.DB.Model(entity.DataSource{}).Where("type != 'global' and  status = 0 order by id ASC").Find(&configs)
-	}
+	db.DB.Model(entity.DataSource{}).Where("confType = ? and status = 1 order by id ASC", params.ConfType).Find(&configs)
 	for _, config := range configs {
 		data.Data[config.Name] = config.Content
 		if config.UpdateTime.After(lastUpdateTime) {
@@ -127,18 +123,46 @@ func (worker) Heartbeat(c *gin.Context) {
 	}
 
 	// Get last datasource time
-	lastDatasourceTime := time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
-	err = db.DB.Model(entity.DataSource{}).Where("type !='global' and status = 0").Select("max(updateTime)").Scan(&lastDatasourceTime).Error
+	lastSourcesTime := time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
+	lastSinksTime := time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC)
+	var sourceCount int64
+	err = db.DB.Model(entity.DataSource{}).Where("confType = ? AND status = 1", entity.ConfTypeSource).Count(&sourceCount).Error
 	if err != nil {
 		Error(c, 500, err.Error())
 		return
+	}
+	if sourceCount == 0 {
+		lastSourcesTime = time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC) // Unix 纪元时间
+	} else {
+		err = db.DB.Model(entity.DataSource{}).Where("confType = ? AND status = 1", entity.ConfTypeSource).Select("MAX(updateTime)").Scan(&lastSourcesTime).Error
+		if err != nil {
+			Error(c, 500, err.Error())
+			return
+		}
+	}
+
+	var sinkCount int64
+	err = db.DB.Model(entity.DataSource{}).Where("confType = ? AND status = 1", entity.ConfTypeSink).Count(&sinkCount).Error
+	if err != nil {
+		Error(c, 500, err.Error())
+		return
+	}
+	if sinkCount == 0 {
+		lastSinksTime = time.Date(1970, 1, 1, 0, 0, 0, 0, time.UTC) // Unix 纪元时间
+	} else {
+		err = db.DB.Model(entity.DataSource{}).Where("confType = ? AND status = 1", entity.ConfTypeSink).Select("MAX(updateTime)").Scan(&lastSinksTime).Error
+		if err != nil {
+			Error(c, 500, err.Error())
+			return
+		}
 	}
 
 	// Check worker status
 	if existedWorker.Status == int32(entity.WorkerStatusUnRegister) || existedWorker.Status == int32(entity.WorkerStatusHeartbeatMiss) || existedWorker.Status == int32(entity.WorkerStatusDeleted) {
 		data := &resp.WorkerHeartbeatResp{
-			LastDatasourceTime: lastDatasourceTime,
-			Kill:               true,
+			LastSourcesTime: lastSourcesTime,
+			LastSinksTime:   lastSinksTime,
+			Kill:            true,
 		}
 		Success(c, data)
 		return
@@ -146,12 +170,12 @@ func (worker) Heartbeat(c *gin.Context) {
 
 	// Update worker heartbeat
 	upWorker := entity.Worker{
-		IP:                 params.IP,
-		Port:               params.Port,
-		HeartbeatMisses:    0,
-		HeartbeatTime:      time.Now(),
-		Status:             int32(entity.WorkerStatusOK),
-		LastDatasourceTime: params.LastDatasourceTime,
+		IP:              params.IP,
+		Port:            params.Port,
+		HeartbeatMisses: 0,
+		HeartbeatTime:   time.Now(),
+		Status:          int32(entity.WorkerStatusOK),
+		LastSourcesTime: params.LastSourcesTime,
 	}
 	err = orm.Where("id = ?", params.WorkerID).Updates(upWorker).Error
 	if err != nil {
@@ -160,8 +184,9 @@ func (worker) Heartbeat(c *gin.Context) {
 	}
 
 	data := &resp.WorkerHeartbeatResp{
-		LastDatasourceTime: lastDatasourceTime,
-		Kill:               false,
+		LastSourcesTime: lastSourcesTime,
+		LastSinksTime:   lastSinksTime,
+		Kill:            false,
 	}
 	Success(c, data)
 }
@@ -190,7 +215,7 @@ func (worker) List(c *gin.Context) {
 		workerListItem.Name = datum.Name
 		workerListItem.IP = datum.IP
 		workerListItem.Port = datum.Port
-		workerListItem.LastDatasourceTime = datum.LastDatasourceTime
+		workerListItem.LastSourcesTime = datum.LastSourcesTime
 		workerListItem.Status = datum.Status
 		workerListItem.StatusText = entity.WorkerStatus_name[datum.Status]
 		workerListItem.HeartbeatTime = datum.HeartbeatTime

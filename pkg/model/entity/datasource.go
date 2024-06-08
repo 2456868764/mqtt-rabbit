@@ -2,18 +2,26 @@ package entity
 
 import "time"
 
-type DataSourceType string
+type SourcesType string
 
 const (
-	DataSourceGlobal DataSourceType = "global"
-	DataSourceMqtt   DataSourceType = "mqtt"
-	DataSourceRedis  DataSourceType = "redis"
-	DataSourceKafka  DataSourceType = "kafka"
+	SourcesMqtt  SourcesType = "mqtt"
+	SourcesRedis SourcesType = "redis"
+	SourcesKafka SourcesType = "kafka"
+)
+
+type ConfType string
+
+const (
+	ConfTypeGlobal ConfType = "global"
+	ConfTypeSource ConfType = "source"
+	ConfTypeSink   ConfType = "sink"
 )
 
 type DataSource struct {
 	ID         int
 	Name       string
+	ConfType   string `json:"confType" gorm:"column:confType"`
 	Type       string
 	Content    string
 	CreateTime time.Time `json:"createTime" gorm:"column:createTime"`
