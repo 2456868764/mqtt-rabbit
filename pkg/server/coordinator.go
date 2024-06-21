@@ -59,8 +59,8 @@ func (c *Coordinator) Run(stopChan <-chan struct{}) error {
 	//
 	go c.gin.Run(fmt.Sprintf(":%d", c.coordinatorPort))
 	//go c.startWorkerCheck(stopChan)
-	go c.startTaskSchedule(stopChan)
-	go c.startTaskCheck(stopChan)
+	//go c.startTaskSchedule(stopChan)
+	//go c.startTaskCheck(stopChan)
 	return nil
 }
 

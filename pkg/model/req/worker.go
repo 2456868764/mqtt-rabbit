@@ -24,3 +24,8 @@ type ConfigurationReq struct {
 	WorkerID int32  `form:"workerId" binding:"required"`
 	ConfType string `form:"confType" binding:"required"`
 }
+
+type ConfigurationUpdateReq struct {
+	Name    string `form:"name" binding:"required"`
+	Content string `form:"content" binding:"required"`
+}

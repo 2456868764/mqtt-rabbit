@@ -24,6 +24,11 @@ type ConfigurationResp struct {
 	LastUpdateTime time.Time         `json:"lastUpdateTime"`
 }
 
+type GetConfigurationResp struct {
+	Content string `json:"content"`
+	Name    string `json:"name"`
+}
+
 type WorkerHeartbeatResp struct {
 	LastSourcesTime time.Time `json:"lastSourcesTime"`
 	LastSinksTime   time.Time `json:"lastSinksTime"`

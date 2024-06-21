@@ -44,5 +44,9 @@ func InitRoutes() *gin.Engine {
 	r.GET("/permission/tree", api.Permissions.List)
 	r.GET("/permission/menu/tree", api.Permissions.List)
 
+	r.GET("/node", api.Worker.List)
+	r.POST("/node/register", api.Worker.Register)
+	r.GET("/configuration", api.Worker.GetConfiguration)
+	r.PUT("/configuration", api.Worker.UpdateConfiguration)
 	return r
 }

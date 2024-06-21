@@ -114,7 +114,7 @@ func (permissions) PatchPermission(c *gin.Context) {
 		Layout:    params.Layout,
 		KeepAlive: params.KeepAlive,
 		Method:    params.Component,
-		Show:      params.Show,
+		Show:      IsTrue(params.Show),
 		Enable:    params.Enable,
 		Order:     params.Order,
 	}).Error

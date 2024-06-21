@@ -39,6 +39,21 @@ func (worker) LoadConfigurations(c *gin.Context) {
 	Success(c, data)
 }
 
+func (worker) Delete(c *gin.Context) {
+	// uid := c.Param("id")
+	//err := db.DB.Transaction(func(tx *gorm.DB) error {
+	//	tx.Where("id =?", uid).Delete(&entity.User{})
+	//	tx.Where("userId =?", uid).Delete(&entity.UserRolesRole{})
+	//	tx.Where("userId =?", uid).Delete(&entity.Profile{})
+	//	return nil
+	//})
+	//if err != nil {
+	//	Error(c, 20001, err.Error())
+	//	return
+	//}
+	Success(c, "")
+}
+
 func (worker) Register(c *gin.Context) {
 	var params req.WorkerRegisterReq
 	var err error
@@ -204,7 +219,9 @@ func (worker) List(c *gin.Context) {
 	orm := db.DB.Model(entity.Worker{})
 	if status != "" {
 		if statusInt, err := strconv.Atoi(status); err == nil {
-			orm = orm.Where("status=?", statusInt)
+			if statusInt > 0 {
+				orm = orm.Where("status=?", statusInt)
+			}
 		}
 	}
 	orm.Count(&data.Total)
@@ -226,4 +243,34 @@ func (worker) List(c *gin.Context) {
 		data.PageData = append(data.PageData, workerListItem)
 	}
 	Success(c, data)
+}
+
+func (worker) GetConfiguration(c *gin.Context) {
+	var name = c.DefaultQuery("name", "")
+	if len(name) == 0 {
+		Error(c, 20001, "name is empty")
+		return
+	}
+	data := &resp.GetConfigurationResp{}
+	var config entity.DataSource
+	db.DB.Model(entity.DataSource{}).Where("name = ? and status = 1", name).Find(&config)
+	data.Content = config.Content
+	data.Name = name
+	Success(c, data)
+}
+
+func (worker) UpdateConfiguration(c *gin.Context) {
+	var params req.ConfigurationUpdateReq
+	var err error
+	err = c.Bind(&params)
+	if err != nil {
+		Error(c, 20001, err.Error())
+		return
+	}
+	updateConfig := &entity.DataSource{
+		Content:    params.Content,
+		UpdateTime: time.Now(),
+	}
+	db.DB.Model(entity.DataSource{}).Where("name = ?", params.Name).Updates(updateConfig)
+	Success(c, "")
 }

@@ -15,16 +15,18 @@ const (
 // Enum value maps for WorkerStatus.
 var (
 	WorkerStatus_name = map[int32]string{
-		0: "OK",
-		1: "HeartbeatMiss",
-		2: "Register",
-		3: "UnRegister",
+		1: "Running",
+		2: "HeartbeatMiss",
+		3: "Register",
+		4: "UnRegister",
+		5: "Deleted",
 	}
 	WorkerStatus_value = map[string]int32{
-		"OK":            0,
-		"HeartbeatMiss": 1,
-		"Register":      2,
-		"UnRegister":    3,
+		"Running":       1,
+		"HeartbeatMiss": 2,
+		"Register":      3,
+		"UnRegister":    4,
+		"Deleted":       5,
 	}
 )
 
