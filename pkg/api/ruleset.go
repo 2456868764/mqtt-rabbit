@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bifromq_engine/pkg/errcode"
 	"crypto/md5"
 	"fmt"
 	"strconv"
@@ -14,66 +15,123 @@ import (
 	"gorm.io/gorm"
 )
 
-var RuleSet = &user{}
+var RuleSet = &ruleSet{}
 
 type ruleSet struct {
 }
 
 func (ruleSet) Detail(c *gin.Context) {
-	var data = &resp.UserDetailRes{}
-	var uid, _ = c.Get("uid")
-	db.DB.Model(entity.User{}).Where("id=?", uid).Find(&data)
-	db.DB.Model(entity.Profile{}).Where("userId=?", uid).Find(&data.Profile)
-	urolIdList := db.DB.Model(entity.UserRolesRole{}).Where("userId=?", uid).Select("roleId")
-	db.DB.Model(entity.Role{}).Where("id IN (?)", urolIdList).Find(&data.Roles)
-	if len(data.Roles) > 0 {
-		data.CurrentRole = data.Roles[0]
+	var data = &resp.RuleSetResp{
+		Streams: make([]*resp.StreamListItem, 0),
+		Rules:   make([]*resp.RuleListItem, 0),
+	}
+
+	var ruleSetID, _ = c.Get("id")
+	db.DB.Model(entity.RuleSet{}).Where("id = ? and deleted = 0", ruleSetID).Find(&data)
+
+	if data.WorkerID > 0 {
+		var node entity.Worker
+		db.DB.Model(entity.Worker{}).Where("id = ?", data.WorkerID).First(&node)
+		data.Node = &resp.RuleSetNode{
+			ID:     node.ID,
+			Name:   node.Name,
+			IP:     node.IP,
+			Port:   node.Port,
+			Status: node.Status,
+			Tag:    node.Tag,
+		}
+	}
+	var streams []entity.Stream
+	db.DB.Model(entity.Stream{}).Where("ruleSetID = ? and deleted = 0", ruleSetID).Find(&streams)
+	for _, stream := range streams {
+		streamListItem := resp.StreamListItem{
+			Stream: stream,
+		}
+		data.Streams = append(data.Streams, &streamListItem)
+	}
+	var rules []entity.Rule
+	db.DB.Model(entity.Rule{}).Where("ruleSetID = ? and deleted = 0", ruleSetID).Find(&rules)
+	for _, rule := range rules {
+		ruleListItem := resp.RuleListItem{
+			Rule:            rule,
+			StatusText:      entity.TaskStatus_name[rule.Status],
+			StatusCheckDesc: entity.TaskCheckStatus_name[rule.StatusCheck],
+		}
+		data.Rules = append(data.Rules, &ruleListItem)
 	}
 	Success(c, data)
+
 }
 
 func (ruleSet) List(c *gin.Context) {
-	var data = resp.UserListRes{
-		PageData: make([]resp.UserListItem, 0),
+	var data = resp.RuleSetListResp{
+		PageData: make([]resp.RuleSetListItem, 0),
 	}
-	var gender = c.DefaultQuery("gender", "")
-	var enable = c.DefaultQuery("enable", "")
-	var username = c.DefaultQuery("username", "")
+	var status = c.DefaultQuery("status", "")
 	var pageNoReq = c.DefaultQuery("pageNo", "1")
 	var pageSizeReq = c.DefaultQuery("pageSize", "10")
 	pageNo, _ := strconv.Atoi(pageNoReq)
 	pageSize, _ := strconv.Atoi(pageSizeReq)
-	var profileList []entity.Profile
-	orm := db.DB.Model(entity.Profile{})
-	if gender != "" {
-		orm = orm.Where("gender=?", gender)
-	}
-	if enable != "" {
-		orm = orm.Where("userId in(?)", db.DB.Model(entity.User{}).Where("enable=?", enable).Select("id"))
-	}
-	if username != "" {
-		orm = orm.Where("nickName like ?", "%"+username+"%")
+	var ruleSetList []entity.RuleSet
+	orm := db.DB.Model(entity.RuleSet{})
+	if status != "" {
+		if statusInt, err := strconv.Atoi(status); err == nil {
+			if statusInt > 0 {
+				orm = orm.Where("status = ? and deleted  = ?", statusInt, 0)
+			}
+		}
+	} else {
+		orm = orm.Where("deleted  = ? ", 0)
 	}
 
 	orm.Count(&data.Total)
-	orm.Offset((pageNo - 1) * pageSize).Limit(pageSize).Find(&profileList)
-	for _, datum := range profileList {
-		var uinfo entity.User
-		db.DB.Model(entity.User{}).Where("id=?", datum.UserId).First(&uinfo)
-		var rols []*entity.Role
-		db.DB.Model(entity.Role{}).Where("id IN (?)", db.DB.Model(entity.UserRolesRole{}).Where("userId=?", datum.UserId).Select("roleId")).Find(&rols)
-		data.PageData = append(data.PageData, resp.UserListItem{
-			ID:         uinfo.ID,
-			Username:   uinfo.Username,
-			Enable:     uinfo.Enable,
-			CreateTime: uinfo.CreateTime,
-			UpdateTime: uinfo.UpdateTime,
-			Gender:     datum.Gender,
-			Avatar:     datum.Avatar,
-			Address:    datum.Address,
-			Email:      datum.Email,
-			Roles:      rols,
-		})
+	orm.Offset((pageNo - 1) * pageSize).Limit(pageSize).Find(&ruleSetList)
+	for _, ruleSet := range ruleSetList {
+		ruleSetItem := resp.RuleSetListItem{
+			StreamCount: 0,
+			RuleCount:   0,
+		}
+		// get stream count
+		var err error
+		var streamCount int64
+		err = db.DB.Model(entity.Stream{}).Where("ruleSetID = ? and deleted = 0 ", ruleSet.ID).Count(&streamCount).Error
+		if err != nil {
+			Error(c, 500, err.Error())
+			return
+		}
+		ruleSetItem.StreamCount = int(streamCount)
+		// rule count
+		var ruleCount int64
+		err = db.DB.Model(entity.Rule{}).Where("ruleSetID = ?  and deleted = 0 ", ruleSet.ID).Count(&ruleCount).Error
+		if err != nil {
+			Error(c, 500, err.Error())
+			return
+		}
+		ruleSetItem.RuleCount = int(ruleCount)
+		ruleSetItem.StatusText = entity.TaskStatus_name[ruleSet.Status]
+		ruleSetItem.StatusCheckText = entity.TaskCheckStatus_name[ruleSet.StatusCheck]
+		// get node info
+		if ruleSet.WorkerID > 0 {
+			var node entity.Worker
+			db.DB.Model(entity.Worker{}).Where("id=?", ruleSet.WorkerID).First(&node)
+			ruleSetItem.Node = &resp.RuleSetNode{
+				ID:     node.ID,
+				Name:   node.Name,
+				IP:     node.IP,
+				Port:   node.Port,
+				Status: node.Status,
+				Tag:    node.Tag,
+			}
+		}
+		ruleSetItem.ID = ruleSet.ID
+		ruleSetItem.Name = ruleSet.Name
+		ruleSetItem.Status = ruleSet.Status
+		ruleSetItem.StatusCheck = ruleSet.StatusCheck
+		ruleSetItem.StatusCheckTime = ruleSet.StatusCheckTime
+		ruleSetItem.ScheduleTime = ruleSet.ScheduleTime
+		ruleSetItem.UpdateTime = ruleSet.UpdateTime
+		ruleSetItem.CreateTime = ruleSet.CreateTime
+		data.PageData = append(data.PageData, ruleSetItem)
 	}
 	Success(c, data)
 }
@@ -112,42 +170,37 @@ func (ruleSet) Update(c *gin.Context) {
 }
 
 func (ruleSet) Add(c *gin.Context) {
-	var params req.AddUserReq
-	err := c.Bind(&params)
+	var params req.RuleSetAddReq
+	var err error
+	err = c.Bind(&params)
 	if err != nil {
 		Error(c, 20001, err.Error())
 		return
 	}
-	err = db.DB.Transaction(func(tx *gorm.DB) error {
-		var newUser = entity.User{
-			Username:   params.Username,
-			Password:   fmt.Sprintf("%x", md5.Sum([]byte(params.Password))),
-			Enable:     params.Enable,
-			CreateTime: time.Now(),
-			UpdateTime: time.Now(),
-		}
-		err = tx.Create(&newUser).Error
-		if err != nil {
-			return err
-		}
-		tx.Create(&entity.Profile{
-			UserId:   newUser.ID,
-			NickName: newUser.Username,
-		})
-		for _, id := range params.RoleIds {
-			tx.Create(&entity.UserRolesRole{
-				UserId: newUser.ID,
-				RoleId: id,
-			})
-		}
-		return nil
-	})
+	var newRuleSet = entity.RuleSet{
+		Name:       params.Name,
+		Status:     int32(entity.TaskStatus_INIT),
+		CreateTime: time.Now(),
+		UpdateTime: time.Now(),
+		WorkerID:   0,
+	}
+
+	orm := db.DB.Model(entity.RuleSet{})
+	exsitedRuleSet := entity.RuleSet{}
+	err = orm.Where("name =?", params.Name).Find(&exsitedRuleSet).Error
 	if err != nil {
-		Error(c, 20001, err.Error())
+		Error(c, 500, err.Error())
 		return
 	}
+
+	if exsitedRuleSet.ID > 0 {
+		ErrorStatus(c, errcode.RuleExistedError)
+		return
+	}
+	orm.Create(&newRuleSet)
 	Success(c, "")
 }
+
 func (ruleSet) Delete(c *gin.Context) {
 	uid := c.Param("id")
 	err := db.DB.Transaction(func(tx *gorm.DB) error {

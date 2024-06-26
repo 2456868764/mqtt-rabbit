@@ -29,3 +29,7 @@ type ConfigurationUpdateReq struct {
 	Name    string `form:"name" binding:"required"`
 	Content string `form:"content" binding:"required"`
 }
+
+type RuleSetAddReq struct {
+	Name string `form:"name" binding:"required"`
+}

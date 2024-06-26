@@ -1,12 +1,11 @@
 <template>
   <CommonPage>
     <template #action>
-      <n-button  v-permission="'AddNode'"  type="primary" @click="handleAdd()">
+      <n-button    type="primary" @click="handleAdd()">
         <i class="i-material-symbols:add mr-4 text-18" />
-        创建新节点
+        创建新规则集
       </n-button>
     </template>
-
     <MeCrud
       ref="$table"
       v-model:query-items="queryItems"
@@ -41,52 +40,15 @@
           :disabled="modalAction === 'view'"
       >
         <n-form-item
-            label="节点名称"
+            label="规则集名称"
             path="name"
             :rule="{
             required: true,
-            message: '请输入节点名称',
+            message: '请输入规则集名称',
             trigger: ['input', 'blur'],
           }"
         >
           <n-input v-model:value="modalForm.name" :disabled="modalAction !== 'add'" />
-        </n-form-item>
-
-        <n-form-item
-            label="节点标签"
-            path="tag"
-            :rule="{
-            required: false,
-            message: '请输入节点标签',
-            trigger: ['input', 'blur'],
-          }"
-        >
-          <n-input v-model:value="modalForm.tag" :disabled="modalAction !== 'add'" />
-        </n-form-item>
-
-        <n-form-item
-            label="节点IP"
-            path="ip"
-            :rule="{
-            required: true,
-            message: '请输入节点IP',
-            trigger: ['input', 'blur'],
-          }"
-        >
-          <n-input v-model:value="modalForm.ip" :disabled="modalAction !== 'add'" />
-        </n-form-item>
-
-        <n-form-item
-            label="节点Port"
-            path="portStr"
-            :rule="{
-            required: true,
-            message: '请输入节点Port',
-            trigger: ['input', 'blur'],
-
-          }"
-        >
-          <n-input v-model:value="modalForm.portStr" :disabled="modalAction !== 'add'" />
         </n-form-item>
       </n-form>
     </MeModal>
@@ -100,8 +62,9 @@ import { MeCrud, MeQueryItem, MeModal } from '@/components'
 import { useCrud } from '@/composables'
 import api from './api'
 
-defineOptions({ name: 'NodeMgt' })
+defineOptions({ name: 'RuleSetList' })
 
+const router = useRouter()
 const $table = ref(null)
 /** QueryBar筛选参数（可选） */
 const queryItems = ref({})
@@ -112,27 +75,29 @@ onMounted(() => {
 
 const columns = [
   { title: 'Id', key: 'id', width: 50, ellipsis: { tooltip: true } },
-  { title: '节点名称', key: 'name', width: 150, ellipsis: { tooltip: true } },
-  { title: '标签', key: 'tag', width: 100, ellipsis: { tooltip: true } },
-  { title: 'IP', key: 'ip', width: 150, ellipsis: { tooltip: true } },
-  { title: '端口', key: 'port', width: 100, ellipsis: { tooltip: true } },
+  { title: '名称', key: 'name', width: 150, ellipsis: { tooltip: true } },
+  { title: '流数目', key: 'streamCount', width: 150, ellipsis: { tooltip: true } },
+  { title: '规则数目', key: 'ruleCount', width: 150, ellipsis: { tooltip: true } },
   { title: '状态', key: 'statusText', width: 150, ellipsis: { tooltip: true } },
   {
-    title: '最后心跳时间',
-    key: 'heartbeatTime',
+    title: '调度时间',
+    key: 'scheduleTime',
     width: 180,
     render(row) {
-      return h('span', formatDateTime(row['heartbeatTime']))
+      return h('span', formatDateTime(row['scheduleTime']))
     },
   },
+  { title: '运行节点', key: 'node.name', width: 150, ellipsis: { tooltip: true } },
+  { title: '检查状态', key: 'statusCheckText', width: 150, ellipsis: { tooltip: true } },
   {
-    title: '数据源更新时间',
-    key: 'lastSourcesTime',
+    title: '最后检查时间',
+    key: 'statusCheckTime',
     width: 180,
     render(row) {
-      return h('span', formatDateTime(row['LastSourcesTime']))
+      return h('span', formatDateTime(row['statusCheckTime']))
     },
   },
+
   {
     title: '创建时间',
     key: 'createDate',
@@ -144,7 +109,7 @@ const columns = [
   {
     title: '操作',
     key: 'actions',
-    width: 100,
+    width: 350,
     align: 'right',
     fixed: 'right',
     hideInExcel: true,
@@ -154,8 +119,47 @@ const columns = [
             NButton,
             {
               size: 'small',
+              type: 'primary',
+              onClick: () => handleSchedule(row.id),
+            },
+            {
+              default: () => '调度',
+              icon: () => h('i', { class: 'i-fe:tool text-14' }),
+            }
+        ),
+        h(
+            NButton,
+            {
+              size: 'small',
+              type: 'primary',
+              style: 'margin-left: 6px;',
+              onClick: () => handleStop(row.id),
+            },
+            {
+              default: () => '停止',
+              icon: () => h('i', { class: 'i-fe:tool text-14' }),
+            }
+        ),
+        h(
+            NButton,
+            {
+              size: 'small',
+              type: 'primary',
+              style: 'margin-left: 6px;',
+              onClick: () =>
+                  router.push({ path: `/ruleset/${row.id}`, query: { ruleSetName: row.name } }),
+            },
+            {
+              default: () => '编辑',
+              icon: () => h('i', { class: 'i-fe:tool text-14' }),
+            }
+        ),
+        h(
+            NButton,
+            {
+              size: 'small',
               type: 'error',
-              style: 'margin-left: 12px;',
+              style: 'margin-left: 6px;',
               onClick: () => handleDelete(row.id),
             },
             {
@@ -190,8 +194,8 @@ const {
   handleOpen,
   handleSave,
 } = useCrud({
-  name: '节点',
-  initForm: { port: 8080 },
+  name: '规则集列表',
+  initForm: {},
   doCreate: api.create,
   doDelete: api.delete,
   // doUpdate: api.update,

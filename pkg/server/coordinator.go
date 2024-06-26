@@ -178,7 +178,7 @@ func (c *Coordinator) scheduleTasks() {
 			if err := client.RulesetImport(reqBody); err == nil {
 				// update
 				updateRuleSet := entity.RuleSet{
-					Status:       int(entity.TaskStatus_STARTED),
+					Status:       int32(entity.TaskStatus_STARTED),
 					WorkerID:     worker.ID,
 					ScheduleTime: time.Now(),
 				}
@@ -223,7 +223,7 @@ func (c *Coordinator) checkTasks() {
 			if err != nil {
 				// update rule status
 				updateRule := entity.Rule{
-					StatusCheck:     int(entity.TaskCheckStatus_FAILED),
+					StatusCheck:     int32(entity.TaskCheckStatus_FAILED),
 					StatusCheckText: err.Error(),
 					StatusCheckTime: time.Now(),
 				}
@@ -238,7 +238,7 @@ func (c *Coordinator) checkTasks() {
 				}
 				// update rule status
 				updateRule := entity.Rule{
-					StatusCheck:     int(statusCheck),
+					StatusCheck:     int32(statusCheck),
 					StatusCheckText: status,
 					StatusCheckTime: time.Now(),
 				}
@@ -255,7 +255,7 @@ func (c *Coordinator) checkTasks() {
 		}
 		// update ruleSet status
 		updateRuleSet := entity.RuleSet{
-			StatusCheck:     int(totalCheckStatus),
+			StatusCheck:     int32(totalCheckStatus),
 			StatusCheckTime: time.Now(),
 		}
 		db.DB.Model(entity.RuleSet{}).Where("id = ?", ruleSet.ID).Updates(updateRuleSet)

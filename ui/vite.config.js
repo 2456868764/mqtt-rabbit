@@ -75,6 +75,13 @@ export default defineConfig(({ command, mode }) => {
     },
     build: {
       chunkSizeWarningLimit: 1024, // chunk 大小警告的限制（单位kb）
+        rollupOptions: {
+                // // 自定义入口文件名，移除文件名前的下划线
+                output: {
+                    // 自定义文件名清理函数
+                    sanitizeFileName: (name) => name.replace(/[^a-z0-9.]/gi, '')
+                }
+        },
     },
   }
 })

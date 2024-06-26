@@ -125,6 +125,10 @@ func (permissions) PatchPermission(c *gin.Context) {
 	Success(c, "")
 
 }
+
+func (p permissions) ValidateMenu(c *gin.Context) {
+	Success(c, "")
+}
 func IsTrue(v bool) int {
 	if v {
 		return 1

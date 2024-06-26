@@ -1,14 +1,14 @@
 package app
 
 import (
-	"context"
-	"flag"
-	"fmt"
-
 	"bifromq_engine/pkg/db"
 	"bifromq_engine/pkg/logs"
 	"bifromq_engine/pkg/routes"
 	"bifromq_engine/pkg/server"
+	"context"
+	"flag"
+	"fmt"
+	"github.com/gin-gonic/gin"
 	"github.com/spf13/cobra"
 )
 
@@ -36,7 +36,10 @@ func Run(ctx context.Context, option *server.ServerConfig) error {
 		return err
 	}
 	// Init Routes
-	gin := routes.InitRoutes()
+	gin := gin.Default()
+	//staticFp, _ := fs.Sub(staticFiles, "ui")
+	//gin.StaticFS("/ui", http.FS(staticFp))
+	routes.InitRoutes(gin)
 
 	// init cordinator
 	coordinator, err2 := server.InitCoordinator(option.CooridnatorPort)

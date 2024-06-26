@@ -10,8 +10,9 @@ import (
 )
 
 var NoAuthenticationURLS = []string{
-	"/auth/login",
-	"/auth/captcha",
+	"/api/auth/login",
+	"/api/auth/captcha",
+	"/ui/*",
 }
 
 func Logger() gin.HandlerFunc {
@@ -26,6 +27,12 @@ func Authentication() gin.HandlerFunc {
 			if strings.ToLower(c.Request.URL.Path) == url {
 				c.Next()
 				return
+			}
+			if strings.HasSuffix(url, "*") {
+				if strings.HasPrefix(strings.ToLower(c.Request.URL.Path), strings.ToLower(url[:len(url)-1])) {
+					c.Next()
+					return
+				}
 			}
 		}
 		token := c.Request.Header.Get("Authorization")

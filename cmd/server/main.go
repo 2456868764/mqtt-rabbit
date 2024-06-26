@@ -1,13 +1,18 @@
 package main
 
 import (
+	"bifromq_engine/cmd/server/app"
 	"fmt"
 	"os"
 
-	"bifromq_engine/cmd/server/app"
 	"bifromq_engine/pkg/logs"
 	"bifromq_engine/pkg/signals"
 )
+
+//var (
+//	//go:embed ui/*
+//	staticFiles embed.FS
+//)
 
 func main() {
 	logs.InitLogger()
