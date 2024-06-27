@@ -120,7 +120,7 @@ image-buildx-engine: build-engine  ## Build and push docker image for the dubbo 
 
 .PHONY: prebuild
 prebuild:  ## prebuild project
-	mkdir ./external && git clone -b feat-1.20 https://github.com/2456868764/istio.git ./external/istio && git clone -b feat-security https://github.com/2456868764/dubbo-go ./external/dubbo-go && go mod tidy
+	mkdir ./external && git clone -b feat-engine https://github.com/2456868764/ekuiper.git ./external/ekuiper  && go mod tidy
 
 
 

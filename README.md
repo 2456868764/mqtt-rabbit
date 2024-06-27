@@ -320,6 +320,26 @@ docker compose up -d
 
 # 八、案例
 
+# 九 项目构建
+
+## prebuild
+
+build 项目之前，需要下载项目 ekuiper 特定分支到本地 external 目录
+执行 make prebuild
+
+```shell
+make prebuild
+```
+
+
+# Reference
+- [Alarm based on multi cycle conditions](https://github.com/lf-edge/ekuiper/discussions/1677)
+- [eKuiper forum](https://askemq.com/c/ekuiper/6)
+- [Datab](https://www.cnblogs.com/databend/p/17772981.html)
+- [使用 EMQX 和 eKuiper 进行 MQTT 流处理：快速教程](https://cloud.tencent.com/developer/article/2302298)
+- [Flow 编排](https://cloud.baidu.com/article/295417)
+- [eKuiper 1.8.0 发布](https://juejin.cn/post/7205487413350711352)
+
 
 
 
