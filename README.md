@@ -339,6 +339,7 @@ make prebuild
 - [使用 EMQX 和 eKuiper 进行 MQTT 流处理：快速教程](https://cloud.tencent.com/developer/article/2302298)
 - [Flow 编排](https://cloud.baidu.com/article/295417)
 - [eKuiper 1.8.0 发布](https://juejin.cn/post/7205487413350711352)
+- [vue naive admin](https://github.com/zclzone/vue-naive-admin)
 
 
 
