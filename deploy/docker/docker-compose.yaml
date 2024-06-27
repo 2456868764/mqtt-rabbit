@@ -30,7 +30,7 @@ services:
       - bifromq-net
     ports:
       - "9080:8080/tcp"
-      - "9081:8081/tcp"
+      - "8081:8081/tcp"
     volumes:
       - ./data/engine:/data
     restart: always
@@ -82,3 +82,32 @@ services:
       - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
       - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka-server:9093
       - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+  # bifromq rule engine job
+  bifromq-rule-engine-joba:
+    image: registry.cn-hangzhou.aliyuncs.com/2456868764/ekuiperd:v1.0.0
+    environment:
+      - NODE_IP=bifromq-rule-engine-joba
+      - NODE_POR=9081
+      - NODE_NAME=bifromq-rule-engine-joba
+      - NODE_TAG=job,joba
+      - COORDINATOR_HOST=bifromq_engine:8081
+    networks:
+      - bifromq-net
+    restart: always
+    depends_on:
+      - db
+      - bifromq_engine
+  bifromq-rule-engine-jobb:
+    image: registry.cn-hangzhou.aliyuncs.com/2456868764/ekuiperd:v1.0.0
+    environment:
+      - NODE_IP=bifromq-rule-engine-jobb
+      - NODE_POR=9081
+      - NODE_NAME=bifromq-rule-engine-jobb
+      - NODE_TAG=job,jobb
+      - COORDINATOR_HOST=bifromq_engine:8081
+    networks:
+      - bifromq-net
+    restart: always
+    depends_on:
+      - db
+      - bifromq_engine

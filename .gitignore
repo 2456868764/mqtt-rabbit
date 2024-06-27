@@ -7,3 +7,8 @@ out
 coverage.xml
 .idea/
 .vscode/
+deploy/docker/data/mysql
+deploy/docker/data/redis
+deploy/docker/data/kafka
+
+
