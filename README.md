@@ -188,11 +188,9 @@ eKuiper 通过规则/SQL 解析器或图规则解析器将解析、规划和优�
 
 ```yaml
 version: '3.9'
-
 networks:
   bifromq-net:
     external: false
-
 services:
   db:
     image: registry.cn-hangzhou.aliyuncs.com/2456868764/mysql:5.7  # 使用MySQL 5.7镜像，你可以选择其他版本
@@ -209,34 +207,21 @@ services:
       MYSQL_DATABASE: engine  # 创建并初始化一个数据库
       MYSQL_USER: dev  # 创建一个新用户
       MYSQL_PASSWORD: 123456  # 设置新用户的密码
-
   bifromq_engine:
-    image: registry.cn-hangzhou.aliyuncs.com/2456868764/bifromq_engine:v1.0.0
-    command: ["serve", "--api-port=8080","--coordinator-port=8081","--dns=root:123456@tcp(db:3306)/engine?charset=utf8mb4&parseTime=True&loc=Local"]
+    image: registry.cn-hangzhou.aliyuncs.com/2456868764/bifromq_engine:v1.0.2
+    command: ["serve", "--api-port=8090","--coordinator-port=8081","--dns=root:123456@tcp(db:3306)/engine?charset=utf8mb4&parseTime=True&loc=Local"]
     environment:
       - JWT_SIGNING_KEY=bifromq
     networks:
       - bifromq-net
     ports:
-      - "9080:8080/tcp"
+      - "8090:8090/tcp"
       - "8081:8081/tcp"
     volumes:
       - ./data/engine:/data
     restart: always
     depends_on:
       - db
-  bifromq_ui:
-    image: registry.cn-hangzhou.aliyuncs.com/2456868764/bifromq_ui:v1.0.1
-    environment:
-      - ACCESS_CODE=lobe66
-    networks:
-      - bifromq-net
-    ports:
-      - "8090:80/tcp"
-    restart: always
-    depends_on:
-      - db
-      - bifromq_engine
   bifromq-server:
     image: registry.cn-hangzhou.aliyuncs.com/2456868764/bifromq:latest
     networks:
@@ -255,7 +240,6 @@ services:
     ports:
       - "6379:6379"  # 将容器的6379端口映射到宿主机的6379端口
     restart: always  # 容器退出时总是重启
-  # Kafka服务定义
   kafka-server:
     image: registry.cn-hangzhou.aliyuncs.com/2456868764/kafka:latest
     networks:
@@ -271,7 +255,6 @@ services:
       - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
       - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka-server:9093
       - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
-  # bifromq rule engine job
   bifromq-rule-engine-joba:
     image: registry.cn-hangzhou.aliyuncs.com/2456868764/ekuiperd:v1.0.0
     environment:
@@ -308,7 +291,7 @@ services:
 docker compose up -d
 ```
 
-启动 包括 mysql db, bifromq engine, bifromq ui, bifromq broker server, redis server , kafka server, rule engine job a , rule engine job b 容器。
+启动 包括 数据库mysql db, 管理节点 bifromq engine, 控制台 bifromq ui, bifromq broker server, redis server , kafka server, 工作节点 A ：rule engine job a ,工作节点 B： rule engine job b 容器。
 
 ![imag](deploy/imgs/img_07.png)
 

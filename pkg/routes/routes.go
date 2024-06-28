@@ -1,55 +1,93 @@
 package routes
 
 import (
+	"bifromq_engine/pkg/utils"
+	"embed"
+	"fmt"
+	"net/http"
+	"strings"
+
 	"bifromq_engine/pkg/api"
+	"github.com/gin-contrib/gzip"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
+	"github.com/gin-contrib/static"
 	"github.com/gin-gonic/gin"
 )
 
-func InitRoutes(r *gin.Engine) {
-	//r := gin.Default()
+func InitAPIRoutes(router *gin.Engine) {
+	r := router.Group("/api")
 	r.Use(sessions.Sessions("mysession", cookie.NewStore([]byte("captch"))))
 	// Register middlewares
 	r.Use(Logger(), Authentication(), Cors())
-	// Register routes
-	r.GET("/ping", api.Ping)
+	r.Use(gzip.Gzip(gzip.DefaultCompression))
+	{
+		// Register routes
+		r.GET("/ping", api.Ping)
+		r.POST("/auth/login", api.Auth.Login)
+		r.GET("/auth/captcha", api.Auth.Captcha)
 
-	r.POST("/api/auth/login", api.Auth.Login)
-	r.GET("/api/auth/captcha", api.Auth.Captcha)
+		r.POST("/auth/logout", api.Auth.Logout)
+		r.POST("/auth/password", api.Auth.Logout)
+		//
+		r.GET("/user", api.User.List)
+		r.POST("/user", api.User.Add)
+		r.DELETE("/user/:id", api.User.Delete)
+		r.PATCH("/user/password/reset/:id", api.User.Update)
+		r.PATCH("/user/:id", api.User.Update)
+		r.PATCH("/user/profile/:id", api.User.Profile)
+		r.GET("/user/detail", api.User.Detail)
 
-	r.POST("/api/auth/logout", api.Auth.Logout)
-	r.POST("/api/auth/password", api.Auth.Logout)
-	//
-	r.GET("/api/user", api.User.List)
-	r.POST("/api/user", api.User.Add)
-	r.DELETE("/api/user/:id", api.User.Delete)
-	r.PATCH("/api/user/password/reset/:id", api.User.Update)
-	r.PATCH("/api/user/:id", api.User.Update)
-	r.PATCH("/api/user/profile/:id", api.User.Profile)
-	r.GET("/api/user/detail", api.User.Detail)
+		r.GET("/role", api.Role.List)
+		r.POST("/role", api.Role.Add)
+		r.PATCH("/role/:id", api.Role.Update)
+		r.DELETE("/role/:id", api.Role.Delete)
+		r.PATCH("/role/users/add/:id", api.Role.AddUser)
+		r.PATCH("/role/users/remove/:id", api.Role.RemoveUser)
+		r.GET("/role/page", api.Role.ListPage)
+		r.GET("/role/permissions/tree", api.Role.PermissionsTree)
 
-	r.GET("/api/role", api.Role.List)
-	r.POST("/api/role", api.Role.Add)
-	r.PATCH("/api/role/:id", api.Role.Update)
-	r.DELETE("/api/role/:id", api.Role.Delete)
-	r.PATCH("/api/role/users/add/:id", api.Role.AddUser)
-	r.PATCH("/api/role/users/remove/:id", api.Role.RemoveUser)
-	r.GET("/api/role/page", api.Role.ListPage)
-	r.GET("/api/role/permissions/tree", api.Role.PermissionsTree)
+		r.POST("/permission", api.Permissions.Add)
+		r.PATCH("/permission/:id", api.Permissions.PatchPermission)
+		r.DELETE("/permission/:id", api.Permissions.Delete)
+		r.GET("/permission/tree", api.Permissions.List)
+		r.GET("/permission/menu/tree", api.Permissions.List)
+		r.GET("/permission/menu/validate", api.Permissions.ValidateMenu)
 
-	r.POST("/api/permission", api.Permissions.Add)
-	r.PATCH("/api/permission/:id", api.Permissions.PatchPermission)
-	r.DELETE("/api/permission/:id", api.Permissions.Delete)
-	r.GET("/api/permission/tree", api.Permissions.List)
-	r.GET("/api/permission/menu/tree", api.Permissions.List)
-	r.GET("/api/permission/menu/validate", api.Permissions.ValidateMenu)
+		r.GET("/node", api.Worker.List)
+		r.POST("/node/register", api.Worker.Register)
+		r.GET("/configuration", api.Worker.GetConfiguration)
+		r.PUT("/configuration", api.Worker.UpdateConfiguration)
+		r.GET("/ruleset", api.RuleSet.List)
+		r.POST("/ruleset", api.RuleSet.Add)
+		r.GET("/ruleset/:id", api.RuleSet.Detail)
+	}
 
-	r.GET("/api/node", api.Worker.List)
-	r.POST("/api/node/register", api.Worker.Register)
-	r.GET("/api/configuration", api.Worker.GetConfiguration)
-	r.PUT("/api/configuration", api.Worker.UpdateConfiguration)
-	r.GET("/api/ruleset", api.RuleSet.List)
-	r.POST("/api/ruleset", api.RuleSet.Add)
-	r.GET("/api/ruleset/:id", api.RuleSet.Detail)
+}
+
+func InitWebRoutes(router *gin.Engine, buildFS embed.FS) {
+	indexPageData, _ := buildFS.ReadFile(fmt.Sprintf("uid/dist/index.html"))
+	router.Use(gzip.Gzip(gzip.DefaultCompression))
+	router.Use(Cache())
+	router.Use(static.Serve("/", utils.EmbedFolder(buildFS, fmt.Sprintf("ui/dist"))))
+	router.NoRoute(func(c *gin.Context) {
+		if strings.HasPrefix(c.Request.RequestURI, "/v1") || strings.HasPrefix(c.Request.RequestURI, "/api") {
+			RelayNotFound(c)
+			return
+		}
+		c.Header("Cache-Control", "no-cache")
+		c.Data(http.StatusOK, "text/html; charset=utf-8", indexPageData)
+	})
+}
+
+func InitRoutes(router *gin.Engine, buildFS embed.FS) {
+	InitAPIRoutes(router)
+	InitWebRoutes(router, buildFS)
+
+}
+
+func RelayNotFound(c *gin.Context) {
+	c.JSON(http.StatusNotFound, gin.H{
+		"error": "no found",
+	})
 }

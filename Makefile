@@ -100,23 +100,22 @@ echoLDFLAGS:
 
 .PHONY: build-engine
 build-engine:
-	  CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build  -o cmd/docker/arm64/bifromq_engine cmd/server/main.go
-	  CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build  -o cmd/docker/amd64/bifromq_engine cmd/server/main.go
+	  CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build  -o docker/arm64/bifromq_engine main.go
+	  CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build  -o docker/amd64/bifromq_engine main.go
 .PHONY: build-ui
 build-ui:
 		cd "ui" && npm run build --production
-	  docker build -t ${BIFROMQ_UI_MG} ./ui
 
 .PHONY: image-buildx-engine
-image-buildx-engine: build-engine  ## Build and push docker image for the dubbo client for cross-platform support
+image-buildx-engine: build-ui build-engine  ## Build and push docker image for the dubbo client for cross-platform support
 	# copy existing Dockerfile and insert --platform=${BUILDPLATFORM} into Dockerfile.cross, and preserve the original Dockerfile
 
-	sed -e '1 s/\(^FROM\)/FROM --platform=\$$\{BUILDPLATFORM\}/; t' -e ' 1,// s//FROM --platform=\$$\{BUILDPLATFORM\}/' cmd/docker/Dockerfile > cmd/docker/Dockerfile.cross
+	sed -e '1 s/\(^FROM\)/FROM --platform=\$$\{BUILDPLATFORM\}/; t' -e ' 1,// s//FROM --platform=\$$\{BUILDPLATFORM\}/' docker/Dockerfile > docker/Dockerfile.cross
 	- docker buildx create --name project-client-builder
 	docker buildx use project-client-builder
-	- docker buildx build --build-arg --push --output=type=registry --platform=$(PLATFORMS) --tag ${BIFROMQ_ENGINE_IMG} -f cmd/docker/Dockerfile.cross cmd/docker
+	- docker buildx build --build-arg --push --output=type=registry --platform=$(PLATFORMS) --tag ${BIFROMQ_ENGINE_IMG} -f docker/Dockerfile.cross docker
 	- docker buildx rm project-client-builder
-	rm cmd/docker/Dockerfile.cross && rm -f -R cmd/docker/arm64/ &&  rm -f -R cmd/docker/amd64/
+	rm docker/Dockerfile.cross && rm -f -R docker/arm64/ &&  rm -f -R docker/amd64/
 
 .PHONY: prebuild
 prebuild:  ## prebuild project
