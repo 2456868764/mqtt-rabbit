@@ -307,7 +307,7 @@ docker compose up -d
 
 # 八、案例
 
-![imag](deploy/imgs/img_11.png)
+![imag](deploy/imgs/img_12.png)
 
 
 # 九 项目构建
