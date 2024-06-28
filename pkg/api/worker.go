@@ -68,7 +68,7 @@ func (worker) Register(c *gin.Context) {
 		Tag:             params.Tag,
 		Port:            params.Port,
 		Status:          int32(entity.WorkerStatusRegister),
-		HeartbeatMisses: 0,
+		HeartbeatMisses: 1,
 		CreateTime:      time.Now(),
 		UpdateTime:      time.Now(),
 	}
@@ -187,7 +187,7 @@ func (worker) Heartbeat(c *gin.Context) {
 	upWorker := entity.Worker{
 		IP:              params.IP,
 		Port:            params.Port,
-		HeartbeatMisses: 0,
+		HeartbeatMisses: 1,
 		HeartbeatTime:   time.Now(),
 		Status:          int32(entity.WorkerStatusOK),
 		LastSourcesTime: params.LastSourcesTime,

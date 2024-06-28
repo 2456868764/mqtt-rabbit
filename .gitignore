@@ -10,5 +10,6 @@ coverage.xml
 deploy/docker/data/mysql
 deploy/docker/data/redis
 deploy/docker/data/kafka
+deploy/docker/data/zookeeper
 
 

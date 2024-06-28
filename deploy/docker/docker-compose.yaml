@@ -5,6 +5,7 @@ networks:
 services:
   db:
     image: registry.cn-hangzhou.aliyuncs.com/2456868764/mysql:5.7  # 使用MySQL 5.7镜像，你可以选择其他版本
+    container_name: db
     networks:
       - bifromq-net
     ports:
@@ -20,6 +21,7 @@ services:
       MYSQL_PASSWORD: 123456  # 设置新用户的密码
   bifromq_engine:
     image: registry.cn-hangzhou.aliyuncs.com/2456868764/bifromq_engine:v1.0.2
+    container_name: bifromq_engine
     command: ["serve", "--api-port=8090","--coordinator-port=8081","--dns=root:123456@tcp(db:3306)/engine?charset=utf8mb4&parseTime=True&loc=Local"]
     environment:
       - JWT_SIGNING_KEY=bifromq
@@ -42,6 +44,7 @@ services:
     restart: always
   redis-server:
     image: registry.cn-hangzhou.aliyuncs.com/2456868764/redis:latest  # 使用最新版本的Redis镜像
+    container_name: redis-server
     environment:
       - ALLOW_EMPTY_PASSWORD=yes
     networks:
@@ -51,23 +54,54 @@ services:
     ports:
       - "6379:6379"  # 将容器的6379端口映射到宿主机的6379端口
     restart: always  # 容器退出时总是重启
-  kafka-server:
-    image: registry.cn-hangzhou.aliyuncs.com/2456868764/kafka:latest
+  zookeeper:
+    image: docker.io/bitnami/zookeeper:3.8
+    container_name: zookeeper
     networks:
       - bifromq-net
-    volumes:
-      - ./data/kafka:/bitnami/kafka
     ports:
-      - '9092:9092'
+      - "2181:2181"
+    volumes:
+      - ./data/zookeeper:/bitnami
     environment:
-      - KAFKA_CFG_NODE_ID=0
-      - KAFKA_CFG_PROCESS_ROLES=controller,broker
-      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
-      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
-      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka-server:9093
-      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - ALLOW_ANONYMOUS_LOGIN=yes
+  kafka-server:
+    image: docker.io/bitnami/kafka:3.4
+    container_name: kafka-server
+    networks:
+      - bifromq-net
+    ports:
+      - "9092:9092"
+    volumes:
+      - ./data/kafka:/bitnami
+    environment:
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka-server:9092
+      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
+    depends_on:
+      - zookeeper
+
+#  kafka-server:
+#    image: registry.cn-hangzhou.aliyuncs.com/2456868764/kafka:latest
+#    networks:
+#      - bifromq-net
+#    volumes:
+#      - ./data/kafka:/bitnami/kafka
+#    ports:
+#      - '9092:9092'
+#    environment:
+#      - KAFKA_CFG_NODE_ID=0
+#      - KAFKA_CFG_PROCESS_ROLES=controller,broker
+#      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
+#      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+#      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka-server:9093
+#      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+#      - KAFKA_CFG_AUTO_CREATE_TOPICS_ENABLE=true
   bifromq-rule-engine-joba:
     image: registry.cn-hangzhou.aliyuncs.com/2456868764/ekuiperd:v1.0.0
+    container_name: bifromq-rule-engine-joba
     environment:
       - NODE_IP=bifromq-rule-engine-joba
       - NODE_POR=9081
@@ -82,6 +116,7 @@ services:
       - bifromq_engine
   bifromq-rule-engine-jobb:
     image: registry.cn-hangzhou.aliyuncs.com/2456868764/ekuiperd:v1.0.0
+    container_name: bifromq-rule-engine-jobb
     environment:
       - NODE_IP=bifromq-rule-engine-jobb
       - NODE_POR=9081

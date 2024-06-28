@@ -4,6 +4,7 @@ go 1.21.6
 
 require (
 	github.com/ajstarks/svgo v0.0.0-20211024235047-1546f124cd8b
+	github.com/fatih/structs v1.1.0
 	github.com/gin-contrib/gzip v1.0.1
 	github.com/gin-contrib/sessions v1.0.1
 	github.com/gin-contrib/static v1.1.2

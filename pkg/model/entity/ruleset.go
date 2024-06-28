@@ -106,6 +106,7 @@ type Rule struct {
 	RuleType        string    `json:"ruleType" gorm:"column:ruleType"`
 	Statement       string    `json:"statement"`
 	Actions         string    `json:"actions"`
+	Options         string    `json:"options"`
 	Status          int32     `json:"status"`
 	Deleted         int       `json:"deleted"`
 	StatusCheck     int32     `json:"statusCheck" gorm:"column:statusCheck"`
