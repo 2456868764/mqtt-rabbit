@@ -301,6 +301,10 @@ docker compose up -d
 
 # 七、控制台
 
+![imag](deploy/imgs/img_09.png)
+![imag](deploy/imgs/img_10.png)
+![imag](deploy/imgs/img_11.png)
+
 # 八、案例
 
 # 九 项目构建
