@@ -1,12 +1,12 @@
 # 项目代码和文档
 
-1. 管理节点和控制台：
-- https://atomgit.com/haoyu/bifromq_engine 
-2. ekuiper 二次开发代码分支
-- https://github.com/2456868764/ekuiper/tree/feat-engine
-3. PPT和文档
-- PPT https://atomgit.com/haoyu/bifromq_engine/blob/main/deploy/bifromq.pptx
-- PDF文档  https://atomgit.com/haoyu/bifromq_engine/blob/main/deploy/bifromq-rule-design.pdf
+- 管理节点和控制台：
+  - https://atomgit.com/haoyu/bifromq_engine
+- ekuiper 二次开发代码分支
+  - https://github.com/2456868764/ekuiper/tree/feat-engine
+- PPT和文档
+  - PPT https://atomgit.com/haoyu/bifromq_engine/blob/main/deploy/bifromq.pptx
+  - PDF文档  https://atomgit.com/haoyu/bifromq_engine/blob/main/deploy/bifromq-rule-design.pdf
 
 # 一、整体架构
 Bifromq 规则引擎设计整体框架如下：
