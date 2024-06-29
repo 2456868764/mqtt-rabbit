@@ -183,6 +183,7 @@ CREATE TABLE `rule` (
   `ruleType` varchar(50) NOT NULL,
   `statement` varchar(1000) DEFAULT NULL,
   `actions` varchar(1000) DEFAULT NULL,
+  `options` varchar(10000) DEFAULT NULL,
   `status` int(11) NOT NULL DEFAULT '0',
   `deleted` tinyint(4) DEFAULT '0',
   `statusCheck` int(11) DEFAULT '0',
@@ -192,7 +193,7 @@ CREATE TABLE `rule` (
   `updateTime` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `idx_name` (`name`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -201,7 +202,7 @@ CREATE TABLE `rule` (
 
 LOCK TABLES `rule` WRITE;
 /*!40000 ALTER TABLE `rule` DISABLE KEYS */;
-INSERT INTO `rule` VALUES (1,1,'demo','sql','select * from demo where temperature;','[{\n    \"log\":  {}\n}]',2,0,3,'2024-06-21 14:23:06','Get \"http://192.168.31.72:9082/rules/demo/status\": dial tcp 192.168.31.72:9082: connect: connection refused','2024-06-04 14:10:38','2024-06-21 06:23:05');
+INSERT INTO `rule` VALUES (1,1,'demo','sql','select * from demo where temperature > 10;','[\n    {\n      \"log\": {}\n    },\n    {\n      \"mqtt\": {\n        \"server\": \"tcp://bifromq-server:1883\",\n        \"topic\": \"devices/allmessages\"\n      }\n    },\n    {\n      \"kafka\":{\n        \"brokers\": \"kafka-server:9092\",\n        \"topic\": \"test\",\n        \"saslAuthType\": \"none\"\n      }\n    }\n  ]',NULL,0,0,0,'2024-06-29 09:46:55','','2024-06-04 14:10:38','2024-06-29 01:48:57'),(2,2,'pipeline-rule1','sql','SELECT * FROM pipeline WHERE isNull(temperature)=false','[\n  {\n    \"log\": {}\n  },\n  {\n    \"memory\": {\n      \"topic\": \"devices/ch1/sensor1\"\n    }\n  }\n]\n\n\n',NULL,0,0,0,'2024-06-29 09:46:55','','2024-06-29 00:53:19','2024-06-29 01:48:57'),(3,2,'rule2-1','sql','SELECT avg(temperature) FROM sensor1 GROUP BY CountWindow(10)','[\n    {\n      \"log\": {}\n    },\n    {\n      \"memory\": {\n        \"topic\": \"analytic/sensors\"\n      }\n    }\n  ]',NULL,0,0,0,'2024-06-29 09:46:55','','2024-06-29 01:05:57','2024-06-29 01:48:57'),(4,2,'rule2-2','sql','SELECT temperature + 273.15 as k FROM sensor1','[\n    {\n      \"log\": {}\n    }\n  ]',NULL,0,0,0,'2024-06-29 09:46:55','','2024-06-29 01:08:21','2024-06-29 01:48:57');
 /*!40000 ALTER TABLE `rule` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -234,7 +235,7 @@ CREATE TABLE `rule_set` (
 
 LOCK TABLES `rule_set` WRITE;
 /*!40000 ALTER TABLE `rule_set` DISABLE KEYS */;
-INSERT INTO `rule_set` VALUES (1,'test',2,0,16,3,'2024-06-21 14:23:06','2024-06-07 14:37:58','2024-06-04 14:07:46','2024-06-21 06:23:05'),(2,'hello',0,0,0,0,NULL,NULL,'2024-06-21 17:56:05','2024-06-21 17:56:05');
+INSERT INTO `rule_set` VALUES (1,'demo slinks',1,0,0,0,'2024-06-29 09:46:55','2024-06-29 08:03:21','2024-06-04 14:07:46','2024-06-29 01:47:52'),(2,'demo pipeline',1,0,0,0,'2024-06-29 09:46:55','2024-06-29 09:43:12','2024-06-21 17:56:05','2024-06-29 01:47:52');
 /*!40000 ALTER TABLE `rule_set` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -256,7 +257,7 @@ CREATE TABLE `stream` (
   `updateTime` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `idx_name` (`name`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -265,7 +266,7 @@ CREATE TABLE `stream` (
 
 LOCK TABLES `stream` WRITE;
 /*!40000 ALTER TABLE `stream` DISABLE KEYS */;
-INSERT INTO `stream` VALUES (1,1,'demo','create stream demo (temperature float, humidity bigint) WITH (FORMAT=\"JSON\", DATASOURCE=\"devices/+/messages\")',2,0,'2024-06-04 14:08:53','2024-06-04 09:57:29');
+INSERT INTO `stream` VALUES (1,1,'demo','create stream demo (device string, temperature float, humidity float) WITH (FORMAT=\"JSON\", DATASOURCE=\"devices/+/messages\")',0,0,'2024-06-04 14:08:53','2024-06-29 01:48:04'),(2,2,'pipeline','create stream pipeline (device string, temperature float, humidity float) WITH (DATASOURCE=\"devices/pipeline\", FORMAT=\"JSON\")',0,0,'2024-06-29 00:49:17','2024-06-29 01:48:04'),(3,2,'sensor1','CREATE STREAM sensor1 (temperature float, humidity float) WITH (DATASOURCE=\"devices/+/sensor1\", FORMAT=\"JSON\", TYPE=\"memory\")',0,0,'2024-06-29 01:00:10','2024-06-29 01:48:04');
 /*!40000 ALTER TABLE `stream` ENABLE KEYS */;
 UNLOCK TABLES;
 
@@ -345,7 +346,7 @@ CREATE TABLE `worker` (
   `updateTime` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `idx_name` (`name`)
-) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4;
+) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8mb4;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -354,6 +355,7 @@ CREATE TABLE `worker` (
 
 LOCK TABLES `worker` WRITE;
 /*!40000 ALTER TABLE `worker` DISABLE KEYS */;
+INSERT INTO `worker` VALUES (18,'node6','','192.168.31.72',1,9082,1,'2024-06-29 09:47:18','2024-06-26 09:41:22','2024-06-29 09:43:18','2024-06-29 01:47:18');
 /*!40000 ALTER TABLE `worker` ENABLE KEYS */;
 UNLOCK TABLES;
 /*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
@@ -366,4 +368,4 @@ UNLOCK TABLES;
 /*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
--- Dump completed on 2024-06-27  9:51:29
+-- Dump completed on 2024-06-29  9:59:21

@@ -18,7 +18,7 @@ func NewClient(url string) *Client {
 
 func (c Client) RulesetImport(req string) error {
 	url := fmt.Sprintf("%s%s", c.url, "/ruleset/import_replace")
-	resp, err := utils.Post(url, req, map[string]string{})
+	resp, err := utils.Post(url, []byte(req), map[string]string{})
 	if err != nil {
 		return err
 	}

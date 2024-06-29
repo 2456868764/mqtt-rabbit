@@ -83,6 +83,11 @@ CREATE STREAM demo (
 
 ```
 
+```sql
+create stream demo (device string, temperature float, humidity float) WITH (FORMAT="JSON", DATASOURCE="devices/+/messages")
+
+```
+
 
 ## Rule(规则）
 每条规则都代表了运行的一项计算工作。它定义了连续流数据源作为输入，计算逻辑和结果 sink 作为输出。
@@ -93,17 +98,24 @@ SQL 规则 通过指定 sql 和 actions 属性，sql 定义了针对预定义流
 ```json
 {
    "id": "rule1",
-   "sql": "SELECT demo.temperature, demo1.temp FROM demo left join demo1 on demo.timestamp = demo1.timestamp where demo.temperature > demo1.temp GROUP BY demo.temperature, HOPPINGWINDOW(ss, 20, 10)",
+   "sql": "select * from demo where temperature > 10",
    "actions": [
-      {
-         "log": {}
-      },
-      {
-      "mqtt": {
-         "server": "tcp://47.52.67.87:1883",
-         "topic": "demoSink"
-         }
-      }
+     {
+       "log": {}
+     },
+     {
+       "mqtt": {
+         "server": "tcp://bifromq-server:1883",
+         "topic": "devices/allmessages"
+       }
+     },
+     {
+       "kafka":{
+         "brokers": "kafka-server:9092",
+         "topic": "allmessages",
+         "saslAuthType": "none"
+       }
+     }
    ]
 }
 ```  
@@ -136,7 +148,7 @@ graph 属性是有向无环图的 JSON 表述。它由 nodes 和 topo 组成，�
         "type": "sink",
         "nodeType": "mqtt",
         "props": {
-          "server": "tcp://${mqtt_srv}:1883",
+          "server": "tcp://bifromq-server:1883",
           "topic": "devices/result"
         }
       }
@@ -304,10 +316,115 @@ docker compose up -d
 ![imag](deploy/imgs/img_09.png)
 ![imag](deploy/imgs/img_10.png)
 ![imag](deploy/imgs/img_11.png)
+![imag](deploy/imgs/img_14.png)
 
 # 八、案例
+## 1. Demo Sinks
+
+```shell
+#1 创建源流
+
+CREAT STREAM demo (device string, temperature float, humidity float) WITH (FORMAT="JSON", DATASOURCE="devices/+/messages")
+
+#2 创建规则和目标
+{
+  "id": "demo",
+  "sql": "select * from demo where temperature > 10",
+  "actions": [
+    {
+      "log": {}
+    },
+    {
+      "mqtt": {
+        "server": "tcp://bifromq-server:1883",
+        "topic": "devices/allmessages"
+      }
+    },
+    {
+      "kafka":{
+        "brokers": "kafka-server:9092",
+        "topic": "test",
+        "saslAuthType": "none"
+      }
+    }
+  ]
+}
+```
+测试结果：
+![imag](deploy/imgs/img_13.png)
+
+## 2. 规则管道 - pipeline
+
+以通过将先前规则的结果导入后续规则来形成规则管道。 这可以通过使用中间存储或 MQ（例如 mqtt 消息服务器）来实现。 通过同时使用 内存源 和 目标，我们可以创建没有外部依赖的规则管道。
 
 ![imag](deploy/imgs/img_12.png)
+
+```shell
+#1 创建源流
+
+CREAT STREAM pipeline (device string, temperature float, humidity float) WITH (DATASOURCE="devices/pipeline", FORMAT="JSON")"
+
+
+#2 创建规则和内存目标
+{
+  "id": "pipeline-rule1",
+  "sql": "SELECT * FROM pipeline WHERE isNull(temperature)=false",
+  "actions": [
+    {
+      "log": {}
+    },
+    {
+      "memory": {
+        "topic": "devices/ch1/sensor1"
+      }
+    }
+  ]
+}
+#3 从内存主题创建一个流
+
+CREATE STREAM sensor1 (temperature FLOAT, humidity FLOAT) 
+WITH (DATASOURCE="devices/+/sensor1", FORMAT="JSON", TYPE="memory")
+
+#4 从内存主题创建另一个要使用的规则
+{
+  "id": "rule2-1",
+  "sql": "SELECT avg(temperature) FROM sensor1 GROUP BY CountWindow(10)",
+  "actions": [
+    {
+      "log": {}
+    },
+    {
+      "memory": {
+        "topic": "analytic/sensors"
+      }
+    }
+  ]
+}
+
+{
+  "id": "rule2-2",
+  "sql": "SELECT temperature + 273.15 as k FROM sensor1",
+  "actions": [
+    {
+      "log": {}
+    }
+  ]
+}
+```
+
+测试结果：
+
+```shell
+time="2024-06-29T09:45:52+08:00" level=info msg="sink result for rule pipeline-rule1: [{\"device\":\"sensor2\",\"humidity\":11.12,\"temperature\":12.1}]" file="sink/log_sink.go:32" rule=pipeline-rule1
+time="2024-06-29T09:45:52+08:00" level=info msg="sink result for rule rule2-2: [{\"k\":285.25}]" file="sink/log_sink.go:32" rule=rule2-2
+time="2024-06-29T09:45:53+08:00" level=info msg="sink result for rule pipeline-rule1: [{\"device\":\"sensor2\",\"humidity\":11.12,\"temperature\":12.1}]" file="sink/log_sink.go:32" rule=pipeline-rule1
+time="2024-06-29T09:45:53+08:00" level=info msg="sink result for rule pipeline-rule1: [{\"device\":\"sensor2\",\"humidity\":11.12,\"temperature\":12.1}]" file="sink/log_sink.go:32" rule=pipeline-rule1
+time="2024-06-29T09:45:53+08:00" level=info msg="sink result for rule rule2-2: [{\"k\":285.25}]" file="sink/log_sink.go:32" rule=rule2-2
+time="2024-06-29T09:45:53+08:00" level=info msg="sink result for rule rule2-2: [{\"k\":285.25}]" file="sink/log_sink.go:32" rule=rule2-2
+time="2024-06-29T09:45:53+08:00" level=info msg="sink result for rule rule2-2: [{\"k\":285.25}]" file="sink/log_sink.go:32" rule=rule2-2
+time="2024-06-29T09:45:53+08:00" level=info msg="sink result for rule pipeline-rule1: [{\"device\":\"sensor2\",\"humidity\":11.12,\"temperature\":12.1}]" file="sink/log_sink.go:32" rule=pipeline-rule1
+
+```
 
 
 # 九 项目构建

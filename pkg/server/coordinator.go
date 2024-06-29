@@ -19,7 +19,7 @@ import (
 const (
 	defaultHeartbeat         = 10 * time.Second
 	shutdownTimeout          = 5 * time.Second
-	defaultMaxMisses         = 3
+	defaultMaxMisses         = 5
 	defaultScheduleInterval  = 10 * time.Second
 	defaultTaskCheckInterval = 30 * time.Second
 )
@@ -175,6 +175,7 @@ func (c *Coordinator) scheduleTasks() {
 			client := agent.NewClient(url)
 			bytes, _ = json.Marshal(importReq)
 			reqBody := string(bytes)
+			logs.Infof("[schedule] post body=%s", reqBody)
 			if err := client.RulesetImport(reqBody); err == nil {
 				// update
 				updateRuleSet := entity.RuleSet{
