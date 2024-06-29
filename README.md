@@ -215,7 +215,7 @@ networks:
     external: false
 services:
   db:
-    image: registry.cn-hangzhou.aliyuncs.com/2456868764/mysql:5.7  # 使用MySQL 5.7镜像，你可以选择其他版本
+    image: registry.cn-hangzhou.aliyuncs.com/2456868764/mysql:5.7.34  # 使用MySQL 5.7镜像，你可以选择其他版本
     networks:
       - bifromq-net
     ports:
@@ -230,27 +230,28 @@ services:
       MYSQL_USER: dev  # 创建一个新用户
       MYSQL_PASSWORD: 123456  # 设置新用户的密码
   bifromq_engine:
-    image: registry.cn-hangzhou.aliyuncs.com/2456868764/bifromq_engine:v1.0.2
-    command: ["serve", "--api-port=8090","--coordinator-port=8081","--dns=root:123456@tcp(db:3306)/engine?charset=utf8mb4&parseTime=True&loc=Local"]
+    image: registry.cn-hangzhou.aliyuncs.com/2456868764/bifromq_engine:v1.0.3
+    command: ["serve", "--api-port=8090","--coordinator-port=8091","--dns=root:123456@tcp(db:3306)/engine?charset=utf8mb4&parseTime=True&loc=Local"]
     environment:
       - JWT_SIGNING_KEY=bifromq
     networks:
       - bifromq-net
     ports:
       - "8090:8090/tcp"
-      - "8081:8081/tcp"
-    volumes:
-      - ./data/engine:/data
+      - "8091:8091/tcp"
     restart: always
     depends_on:
       - db
   bifromq-server:
     image: registry.cn-hangzhou.aliyuncs.com/2456868764/bifromq:latest
+    environment:
+      - JVM_HEAP_OPTS=-Xms1G -Xmx2G
     networks:
       - bifromq-net
     ports:
       - "1883:1883/tcp"
     restart: always
+
   redis-server:
     image: registry.cn-hangzhou.aliyuncs.com/2456868764/redis:latest  # 使用最新版本的Redis镜像
     environment:
@@ -262,29 +263,40 @@ services:
     ports:
       - "6379:6379"  # 将容器的6379端口映射到宿主机的6379端口
     restart: always  # 容器退出时总是重启
-  kafka-server:
-    image: registry.cn-hangzhou.aliyuncs.com/2456868764/kafka:latest
+  zookeeper:
+    image: registry.cn-hangzhou.aliyuncs.com/2456868764/zookeeper:3.8
     networks:
       - bifromq-net
-    volumes:
-      - ./data/kafka:/bitnami/kafka
     ports:
-      - '9092:9092'
+      - "2181:2181"
+    volumes:
+      - ./data/zookeeper:/bitnami
     environment:
-      - KAFKA_CFG_NODE_ID=0
-      - KAFKA_CFG_PROCESS_ROLES=controller,broker
-      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092,CONTROLLER://:9093
-      - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
-      - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka-server:9093
-      - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - ALLOW_ANONYMOUS_LOGIN=yes
+  kafka-server:
+    image: registry.cn-hangzhou.aliyuncs.com/2456868764/kafka:3.4
+    networks:
+      - bifromq-net
+    ports:
+      - "9092:9092"
+    volumes:
+      - ./data/kafka:/bitnami
+    environment:
+      - KAFKA_CFG_ZOOKEEPER_CONNECT=zookeeper:2181
+      - ALLOW_PLAINTEXT_LISTENER=yes
+      - KAFKA_CFG_LISTENERS=PLAINTEXT://:9092
+      - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://kafka-server:9092
+      - KAFKA_AUTO_CREATE_TOPICS_ENABLE=true
+    depends_on:
+      - zookeeper
   bifromq-rule-engine-joba:
     image: registry.cn-hangzhou.aliyuncs.com/2456868764/ekuiperd:v1.0.0
     environment:
       - NODE_IP=bifromq-rule-engine-joba
-      - NODE_POR=9081
+      - NODE_PORT=9082
       - NODE_NAME=bifromq-rule-engine-joba
       - NODE_TAG=job,joba
-      - COORDINATOR_HOST=bifromq_engine:8081
+      - COORDINATOR_HOST=bifromq_engine:8091
     networks:
       - bifromq-net
     restart: always
@@ -295,10 +307,10 @@ services:
     image: registry.cn-hangzhou.aliyuncs.com/2456868764/ekuiperd:v1.0.0
     environment:
       - NODE_IP=bifromq-rule-engine-jobb
-      - NODE_POR=9081
+      - NODE_PORT=9082
       - NODE_NAME=bifromq-rule-engine-jobb
       - NODE_TAG=job,jobb
-      - COORDINATOR_HOST=bifromq_engine:8081
+      - COORDINATOR_HOST=bifromq_engine:8091
     networks:
       - bifromq-net
     restart: always
